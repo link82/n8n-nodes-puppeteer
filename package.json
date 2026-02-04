@@ -72,5 +72,8 @@
     "puppeteer-extra-plugin-human-typing": "github:0x7357/puppeteer-extra-plugin-human-typing",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "puppeteer-extra-plugin-user-preferences": "^2.4.1"
+  },
+  "overrides": {
+    "lru-cache": "^10.0.0"
   }
 }
