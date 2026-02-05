@@ -2,33 +2,9 @@ FROM docker.n8n.io/n8nio/n8n
 
 USER root
 
-# Install Chrome dependencies and Chrome
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    glib \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    udev \
-    ttf-liberation \
-    font-noto-emoji \
-		font-terminus \
-		font-inconsolata \
-		font-dejavu \
-		font-noto \
-		font-noto-cjk \
-		font-awesome \
-		font-noto-extra \
-		font-isas-misc
-
-# Tell Puppeteer to use installed Chrome instead of downloading it
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
-# Install n8n-nodes-puppeteer in a permanent location
+# Install n8n-nodes-puppeteer in a permanent location.
+# This node connects only to a remote browser (e.g. Browserless).
+# Set PUPPETEER_BROWSER_WS_ENDPOINT or configure the endpoint in the node.
 RUN mkdir -p /opt/n8n-custom-nodes && \
     cd /opt/n8n-custom-nodes && \
     npm install n8n-nodes-puppeteer && \

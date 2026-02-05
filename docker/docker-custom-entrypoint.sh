@@ -7,24 +7,19 @@ print_banner() {
     echo "Node.js version: $(node -v)"
     echo "n8n version: $(n8n --version)"
 
-    # Get Chromium version specifically from the path we're using for Puppeteer
-    CHROME_VERSION=$("$PUPPETEER_EXECUTABLE_PATH" --version 2>/dev/null || echo "Chromium not found")
-    echo "Chromium version: $CHROME_VERSION"
-
-    # Get Puppeteer version if installed
     PUPPETEER_PATH="/opt/n8n-custom-nodes/node_modules/n8n-nodes-puppeteer"
     if [ -f "$PUPPETEER_PATH/package.json" ]; then
         PUPPETEER_VERSION=$(node -p "require('$PUPPETEER_PATH/package.json').version")
         echo "n8n-nodes-puppeteer version: $PUPPETEER_VERSION"
-
-        # Try to resolve puppeteer package from the n8n-nodes-puppeteer directory
-        CORE_PUPPETEER_VERSION=$(cd "$PUPPETEER_PATH" && node -e "try { const version = require('puppeteer/package.json').version; console.log(version); } catch(e) { console.log('not found'); }")
-        echo "Puppeteer core version: $CORE_PUPPETEER_VERSION"
     else
         echo "n8n-nodes-puppeteer: not installed"
     fi
 
-    echo "Puppeteer executable path: $PUPPETEER_EXECUTABLE_PATH"
+    if [ -n "$PUPPETEER_BROWSER_WS_ENDPOINT" ] || [ -n "$PUPPETEER_WS_ENDPOINT" ]; then
+        echo "Browser endpoint: ${PUPPETEER_BROWSER_WS_ENDPOINT:-$PUPPETEER_WS_ENDPOINT}"
+    else
+        echo "Browser endpoint: (set PUPPETEER_BROWSER_WS_ENDPOINT or configure in node)"
+    fi
     echo "----------------------------------------"
 }
 

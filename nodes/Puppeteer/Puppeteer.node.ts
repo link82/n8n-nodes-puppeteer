@@ -13,11 +13,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-import puppeteer from "puppeteer-extra";
-import pluginStealth from "puppeteer-extra-plugin-stealth";
-//@ts-ignore
-import pluginHumanTyping from "puppeteer-extra-plugin-human-typing";
-import {
+import puppeteer, {
   type Browser,
   type Device,
   KnownDevices as devices,
@@ -26,25 +22,15 @@ import {
   type PDFOptions,
   type PuppeteerLifeCycleEvent,
   type ScreenshotOptions,
-} from "puppeteer";
+} from "puppeteer-core";
 
-import {
-  nodeDescription,
-  isRunningInContainer,
-} from "./Puppeteer.node.options";
+import { nodeDescription } from "./Puppeteer.node.options";
 
 const {
   NODE_FUNCTION_ALLOW_BUILTIN: builtIn,
   NODE_FUNCTION_ALLOW_EXTERNAL: external,
   CODE_ENABLE_STDOUT,
 } = process.env;
-
-const CONTAINER_LAUNCH_ARGS = [
-  "--no-sandbox",
-  "--disable-setuid-sandbox",
-  "--disable-dev-shm-usage",
-  "--disable-gpu",
-];
 
 export const vmResolver = makeResolverFromLegacyOptions({
   external: external
@@ -595,28 +581,22 @@ export class Puppeteer implements INodeType {
     const returnData: INodeExecutionData[] = [];
     const options = this.getNodeParameter("options", 0, {}) as IDataObject;
     const operation = this.getNodeParameter("operation", 0) as string;
-    let headless: "shell" | boolean = options.headless !== false;
-    const headlessShell = options.shell === true;
-    const executablePath = options.executablePath as string;
 
-    // Support environment variables for browser connection
     const browserWSEndpoint =
       (options.browserWSEndpoint as string) ||
       process.env.PUPPETEER_BROWSER_WS_ENDPOINT ||
       process.env.PUPPETEER_WS_ENDPOINT ||
       "";
+    if (!browserWSEndpoint.trim()) {
+      throw new NodeOperationError(
+        this.getNode(),
+        "A remote browser WebSocket endpoint is required. Set it in Options > Browser WebSocket Endpoint or via the PUPPETEER_BROWSER_WS_ENDPOINT or PUPPETEER_WS_ENDPOINT environment variable (e.g. for Browserless).",
+      );
+    }
+
     const protocol =
       (options.protocol as "cdp" | "webDriverBiDi" | undefined) ||
       (process.env.PUPPETEER_PROTOCOL as "cdp" | "webDriverBiDi" | undefined);
-    const stealth = options.stealth === true;
-    const humanTyping = options.humanTyping === true;
-    const humanTypingOptions = {
-      keyboardLayout: "en",
-      ...((options.humanTypingOptions as IDataObject) || {}),
-    };
-    const launchArguments = (options.launchArguments as IDataObject) || {};
-    const launchArgs: IDataObject[] = launchArguments.args as IDataObject[];
-    const args: string[] = [];
     const device = options.device as string;
     const protocolTimeout = options.protocolTimeout as number;
     let batchSize = options.batchSize as number;
@@ -625,114 +605,29 @@ export class Puppeteer implements INodeType {
       batchSize = 1;
     }
 
-    // More on launch arguments: https://www.chromium.org/developers/how-tos/run-chromium-with-flags/
-    if (launchArgs && launchArgs.length > 0) {
-      args.push(...launchArgs.map((arg: IDataObject) => arg.arg as string));
-    }
-
-    // Auto-detect container environment or use explicit setting
-    const addContainerArgsOption = options.addContainerArgs;
-    const isContainer = isRunningInContainer();
-    let addContainerArgs = false;
-
-    // Determine whether to add container arguments
-    // When addContainerArgsOption is undefined (not set), default to true and auto-detect
-    // When explicitly true, always add
-    // When explicitly false, never add
-    if (addContainerArgsOption === false) {
-      // Explicitly disabled by user
+    const isFromEnv =
+      !options.browserWSEndpoint &&
+      (process.env.PUPPETEER_BROWSER_WS_ENDPOINT ||
+        process.env.PUPPETEER_WS_ENDPOINT);
+    if (isFromEnv) {
       console.log(
-        "Puppeteer node: Container arguments explicitly disabled by user",
+        `Puppeteer node: Using browser WebSocket endpoint from environment: ${browserWSEndpoint}`,
       );
-      addContainerArgs = false;
-    } else if (
-      addContainerArgsOption === true ||
-      addContainerArgsOption === undefined
-    ) {
-      // Explicitly enabled OR not set (use default behavior)
-      if (isContainer) {
-        console.log(
-          "Puppeteer node: Container environment detected, applying container arguments",
-        );
-        addContainerArgs = true;
-      } else if (addContainerArgsOption === true) {
-        // Force enabled even outside container
-        console.log(
-          "Puppeteer node: Container arguments enabled (no container detected)",
-        );
-        addContainerArgs = true;
-      }
     }
-
-    if (addContainerArgs) {
-      const missingContainerArgs = CONTAINER_LAUNCH_ARGS.filter(
-        (arg) =>
-          !args.some(
-            (existingArg) =>
-              existingArg === arg || existingArg.startsWith(`${arg}=`),
-          ),
-      );
-
-      if (missingContainerArgs.length > 0) {
-        console.log(
-          "Puppeteer node: Adding container arguments:",
-          missingContainerArgs,
-        );
-        args.push(...missingContainerArgs);
-      } else {
-        console.log(
-          "Puppeteer node: Container arguments already present in launch arguments",
-        );
-      }
-    }
-
-    // More on proxying: https://www.chromium.org/developers/design-documents/network-settings
-    if (options.proxyServer) {
-      args.push(`--proxy-server=${options.proxyServer}`);
-    }
-
-    if (stealth) {
-      puppeteer.use(pluginStealth());
-    }
-    if (humanTyping) {
-      puppeteer.use(pluginHumanTyping(humanTypingOptions));
-    }
-
-    if (headless && headlessShell) {
-      headless = "shell";
+    if (protocol && protocol !== "cdp") {
+      console.log(`Puppeteer node: Using protocol: ${protocol}`);
     }
 
     let browser: Browser;
     try {
-      if (browserWSEndpoint) {
-        const isFromEnv =
-          !options.browserWSEndpoint &&
-          (process.env.PUPPETEER_BROWSER_WS_ENDPOINT ||
-            process.env.PUPPETEER_WS_ENDPOINT);
-        if (isFromEnv) {
-          console.log(
-            `Puppeteer node: Using browser WebSocket endpoint from environment variable: ${browserWSEndpoint}`,
-          );
-        }
-        if (protocol && protocol !== "cdp") {
-          console.log(`Puppeteer node: Using protocol: ${protocol}`);
-        }
-        browser = await puppeteer.connect({
-          browserWSEndpoint,
-          protocol: protocol || "cdp",
-          protocolTimeout,
-        });
-      } else {
-        browser = await puppeteer.launch({
-          headless,
-          args,
-          executablePath,
-          protocolTimeout,
-        });
-      }
+      browser = await puppeteer.connect({
+        browserWSEndpoint,
+        protocol: protocol || "cdp",
+        protocolTimeout,
+      });
     } catch (error) {
       throw new Error(
-        `Failed to launch/connect to browser: ${(error as Error).message}`,
+        `Failed to connect to browser: ${(error as Error).message}`,
       );
     }
 

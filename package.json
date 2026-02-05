@@ -1,6 +1,6 @@
 {
   "name": "@crunchy-bytes/n8n-nodes-puppeteer",
-  "version": "1.5.0-crunchy.1",
+  "version": "1.5.0-crunchy.4",
   "description": "n8n node for browser automation using Puppeteer",
   "license": "MIT",
   "homepage": "https://github.com/link82/n8n-nodes-puppeteer",
@@ -67,13 +67,6 @@
   },
   "dependencies": {
     "@n8n/vm2": "^3.9.25",
-    "puppeteer": "^24.1.1",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-human-typing": "github:0x7357/puppeteer-extra-plugin-human-typing",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "puppeteer-extra-plugin-user-preferences": "^2.4.1"
-  },
-  "overrides": {
-    "lru-cache": "^10.0.0"
+    "puppeteer-core": "^24.1.1"
   }
 }

@@ -537,22 +537,11 @@ const buildProperties = (): INodeProperties[] => {
         },
       ],
     },
-    ...(isRunningInContainer()
-      ? [
-          {
-            displayName:
-              "ℹ️ Container environment detected. Chrome launch arguments (--no-sandbox, etc.) are automatically added. This can be toggled in Options > Add Container Arguments.",
-            name: "containerNotice",
-            type: "notice" as const,
-            default: "",
-          },
-        ]
-      : []),
     ...(process.env.PUPPETEER_BROWSER_WS_ENDPOINT ||
     process.env.PUPPETEER_WS_ENDPOINT
       ? [
           {
-            displayName: `ℹ️ Browser WebSocket Endpoint is set via environment variable: ${process.env.PUPPETEER_BROWSER_WS_ENDPOINT || process.env.PUPPETEER_WS_ENDPOINT}. This can be overridden in Options.`,
+            displayName: `ℹ️ Browser WebSocket Endpoint is set via environment: ${process.env.PUPPETEER_BROWSER_WS_ENDPOINT || process.env.PUPPETEER_WS_ENDPOINT}. This node connects only to a remote browser (e.g. Browserless). Override in Options if needed.`,
             name: "wsEndpointNotice",
             type: "notice" as const,
             default: "",
@@ -584,7 +573,7 @@ const buildProperties = (): INodeProperties[] => {
           required: false,
           default: "",
           description:
-            "The WebSocket URL of the browser to connect to. When configured, puppeteer will skip the browser launch and connect to the browser instance. Can also be set globally via environment variables: PUPPETEER_BROWSER_WS_ENDPOINT or PUPPETEER_WS_ENDPOINT.",
+            "The WebSocket URL of the remote browser to connect to (e.g. Browserless). Required unless set via environment variables: PUPPETEER_BROWSER_WS_ENDPOINT or PUPPETEER_WS_ENDPOINT.",
         },
         {
           displayName: "Protocol",
@@ -617,15 +606,6 @@ const buildProperties = (): INodeProperties[] => {
             loadOptionsMethod: "getDevices",
           },
           required: false,
-        },
-        {
-          displayName: "Executable path",
-          name: "executablePath",
-          type: "string",
-          required: false,
-          default: "",
-          description:
-            "A path where Puppeteer expects to find the bundled browser. Has no effect when 'Browser WebSocket Endpoint' is set.",
         },
         {
           displayName: "Extra Headers",
@@ -667,34 +647,6 @@ const buildProperties = (): INodeProperties[] => {
           default: "",
           description:
             "File name to set in binary data. Only applies to 'Get PDF' and 'Get Screenshot' operations.",
-        },
-        {
-          displayName: "Launch Arguments",
-          name: "launchArguments",
-          placeholder: "Add Argument",
-          type: "fixedCollection",
-          typeOptions: {
-            multipleValues: true,
-          },
-          description:
-            "Additional command line arguments to pass to the browser instance. Has no effect when 'Browser WebSocket Endpoint' is set.",
-          default: {},
-          options: [
-            {
-              name: "args",
-              displayName: "",
-              values: [
-                {
-                  displayName: "Argument",
-                  name: "arg",
-                  type: "string",
-                  default: "",
-                  description:
-                    "The command line argument to pass to the browser instance.",
-                },
-              ],
-            },
-          ],
         },
         {
           displayName: "Timeout",
@@ -758,130 +710,12 @@ const buildProperties = (): INodeProperties[] => {
             "Whether to enable page level caching. Defaults to true.",
         },
         {
-          displayName: "Headless mode",
-          name: "headless",
-          type: "boolean",
-          required: false,
-          default: true,
-          description:
-            "Whether to run browser in headless mode. Defaults to true.",
-        },
-        {
-          displayName: "Use Chrome Headless Shell",
-          name: "shell",
-          type: "boolean",
-          required: false,
-          default: false,
-          description:
-            "Whether to run browser in headless shell mode. Defaults to false. Headless mode must be enabled. chrome-headless-shell must be in $PATH.",
-        },
-        {
-          displayName: "Stealth mode",
-          name: "stealth",
-          type: "boolean",
-          required: false,
-          default: false,
-          description:
-            "When enabled, applies various techniques to make detection of headless Puppeteer harder.",
-        },
-        {
-          displayName: "Human typing mode",
-          name: "humanTyping",
-          type: "boolean",
-          required: false,
-          default: false,
-          description:
-            'Gives page the function .typeHuman() which "humanizes" the writing of input elements',
-        },
-        {
-          displayName: "Human Typing Options",
-          name: "humanTypingOptions",
-          type: "collection",
-          placeholder: "Add Option",
-          default: {},
-          displayOptions: {
-            show: {
-              humanTyping: [true],
-            },
-          },
-          options: [
-            {
-              displayName: "Backspace Maximum Delay (ms)",
-              name: "backspaceMaximumDelayInMs",
-              type: "number",
-              required: false,
-              default: 750 * 2,
-              description:
-                "Maximum delay for simulating backspaces in milliseconds",
-            },
-            {
-              displayName: "Backspace Minimum Delay (ms)",
-              name: "backspaceMinimumDelayInMs",
-              type: "number",
-              required: false,
-              default: 750,
-              description:
-                "Minimum delay for simulating backspaces in milliseconds",
-            },
-            {
-              displayName: "Maximum Delay (ms)",
-              name: "maximumDelayInMs",
-              type: "number",
-              required: false,
-              default: 650,
-              description: "Maximum delay between keystrokes in milliseconds",
-            },
-            {
-              displayName: "Minimum Delay (ms)",
-              name: "minimumDelayInMs",
-              type: "number",
-              required: false,
-              default: 150,
-              description: "Minimum delay between keystrokes in milliseconds",
-            },
-            {
-              displayName: "Chance to Keep a Typo (%)",
-              name: "chanceToKeepATypoInPercent",
-              type: "number",
-              required: false,
-              default: 0,
-              description: "Percentage chance to keep a typo",
-            },
-            {
-              displayName: "Typo Chance (%)",
-              name: "typoChanceInPercent",
-              type: "number",
-              required: false,
-              default: 15,
-              description: "Percentage chance to make a typo",
-            },
-          ],
-        },
-        {
-          displayName: "Proxy Server",
-          name: "proxyServer",
-          type: "string",
-          required: false,
-          default: "",
-          description:
-            "This tells Puppeteer to use a custom proxy configuration. Examples: localhost:8080, socks5://localhost:1080, etc.",
-        },
-        {
           displayName: "Capture Downloads",
           name: "captureDownloads",
           type: "boolean",
           default: false,
           description:
             "When enabled, any files downloaded during script execution (via clicks, direct downloads, etc.) will be automatically captured and returned as binary data in the node output. Useful for downloading PDFs, images, or other files triggered by user interactions.",
-          required: false,
-        },
-        {
-          displayName: "Add Container Arguments",
-          name: "addContainerArgs",
-          type: "boolean",
-          default: true,
-          description:
-            "Container environments are auto-detected and optimized automatically. When enabled (default), recommended Chrome arguments (--no-sandbox, --disable-setuid-sandbox, --disable-dev-shm-usage, --disable-gpu) are added when running in Docker/Kubernetes. Disable only if you experience launch issues.",
           required: false,
         },
       ],
